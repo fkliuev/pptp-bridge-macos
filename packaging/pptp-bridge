@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/bin/python3 -I '/Applications/PPTP Bridge.app/Contents/Resources/control.py' "$@"

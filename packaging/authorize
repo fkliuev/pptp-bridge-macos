@@ -1,0 +1,17 @@
+#!/bin/sh
+# Installed root-owned by Installer. Allow one peer for the invoking user.
+set -eu
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
+[ "$(id -u)" = 0 ] && [ "$#" = 1 ] || exit 2
+case "${SUDO_UID:-}" in ''|*[!0-9]*) exit 2;; esac
+[ "$SUDO_UID" -ge 501 ] || exit 2
+printf '%s\n' "$1" | awk -F. 'NR != 1 || NF != 4 {exit 1} {for(i=1;i<=4;i++) if($i !~ /^[0-9]+$/ || length($i)>3 || $i+0>255) exit 1}'
+helper=/Library/PrivilegedHelperTools/org.pptpbridge.transport
+rule=/private/etc/sudoers.d/pptp-bridge-"$SUDO_UID"
+tmp=$(mktemp /private/etc/sudoers.d/.pptp-bridge.XXXXXXXX)
+trap 'rm -f "$tmp"' EXIT
+digest=$(shasum -a 256 "$helper" | cut -d' ' -f1)
+printf '#%s ALL=(root) NOPASSWD: sha256:%s %s %s *\n' "$SUDO_UID" "$digest" "$helper" "$1" > "$tmp"
+chmod 0440 "$tmp"
+visudo -cf "$tmp"
+mv -f "$tmp" "$rule"
